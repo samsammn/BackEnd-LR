@@ -1,18 +1,18 @@
+from src.utils.JWTEncoderDecoder import *
 
 # fungsi untuk menggerakan/menjalankan form leave request dari requester ke supervisor
 @app.route('/nextflow/supervisor/submit', methods = ['POST'])
-def submitToSupervisor():
+def submitToSupervisor(TokenJwt):
     if request.method == 'POST':
 
         req_sid = request.json['staff_id']
-        decode = jwt.decode(req_sid, secret_key, algorithm=['HS256'])
-        staff_id = decode['staff_id']
+        staffId = decodeStaffID(TokenJwt)
         
         req_comment = request.json['comment']
         
         curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
         curData.execute("rollback")
-        curData.execute("Select * from get_data_employee(%s)", (int(staff_id),))
+        curData.execute("Select * from get_data_employee(%s)", (int(staffId),))
 
         data = []
         for row in curData.fetchall():
