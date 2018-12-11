@@ -34,7 +34,7 @@ BEGIN
     RETURN QUERY Select id as id_leave, leave_name as leaveName, entitlement as entitlements from leave Order by leave_name Asc;
 END; $$
 
-LANGUAGE 'plpgsql'
+LANGUAGE 'plpgsql';
 
 --- 3. Function get leave type by id leave type
 CREATE OR REPLACE FUNCTION get_leave_type_by(idlt int)
@@ -49,7 +49,7 @@ BEGIN
     RETURN QUERY Select id as id_leave, leave_name as leaveName, type as typeLeave, entitlement as entitlements from leave where id=idlt Order by leave_name Asc;
 END; $$
 
-LANGUAGE 'plpgsql'
+LANGUAGE 'plpgsql';
 
 --- 4. function get data Employee
 CREATE or REPLACE FUNCTION get_data_employee(sid int)
@@ -99,7 +99,7 @@ LANGUAGE 'plpgsql';
 
 
 ---6. function insert Leave staff
-select * from set_leave_staff('20-05-2018','25-05-2018',0,'kagok hayang libur','25-05-2018','Approve', 'true', 'false','record:12345','bpmn:12345',2018112001)
+-- select * from set_leave_staff('20-05-2018','25-05-2018',0,'kagok hayang libur','25-05-2018','Approve', 'true', 'false','record:12345','bpmn:12345',2018112001);
 
 CREATE OR REPLACE FUNCTION set_leave_staff(start_dates text, end_dates text, leave_ids int, remarkss text, submission_dates text, statuss text, read_staffs text, read_supervisors text, record_ids text, process_ids text, staff_ids int)
 RETURNS TABLE (

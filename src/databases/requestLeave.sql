@@ -14,7 +14,7 @@
      created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
      updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
      deleted_at timestamp with time zone,
-	 token_nexflow text
+	 token_nextflow text
  );
 
  ALTER TABLE ONLY public.employee ADD CONSTRAINT employee_pkey PRIMARY KEY (id);
@@ -78,7 +78,7 @@ CREATE TABLE public.holiday(
 );
 ALTER TABLE ONLY public.holiday ADD CONSTRAINT holiday_pkey PRIMARY KEY (id_holiday);
 
-insert into employee (staff_id, staff_name, email, password, supervisor_id, sex, division_id, location_user, staff_level, joined_date, token) values 
+insert into employee (staff_id, staff_name, email, password, supervisor_id, sex, division_id, location_user, staff_level, joined_date, token_nextflow) values 
 	(2018112001, 'Fahmi Prasetio', 'fahmiprasetiiio@gmail.com', '123123', '2', 'L','none', 'Bandung', 'Staff', '22-11-2017', 'iYwlxotIP5MQP-U31UJB6Lbv3uzo4gnRq4i1PKkMeTo.n-818ucaKcayquy2ltXXAOnAoyU9mAdVYMHedaiFL3k'),
 	(2018112002, 'Samsam Muhammad Nursamsi', 'samsam.nursamsi02@gmail.com', '123123', '3', 'L','none', 'Tasikmalaya', 'Supervisor', '22-11-2015', 'gUrYSFPPM7bPAWcagU-NL9xfVgyJghDTZP3gyy0GthM.IhPwLzimPNIY1FkKju2PsVtu_jpZcSIFDoYLSSWV1SI'),
 	(2018112003, 'Cecep Ahmad Fauzi', 'samsam.nursamsi02@gmail.com', '123123', '0', 'L','none', 'Bandung', 'Manager', '22-11-2012',''),
@@ -89,16 +89,17 @@ insert into employee (staff_id, staff_name, email, password, supervisor_id, sex,
 
 
 insert into leave (leave_name, type, entitlement) VALUES
-('Maternity Leave', 'Important',90),
-('Miscarriage Leave', 'Important',45),
-('Menstruation Leave', 'Important',2),
-('Employees marriage Leave', 'Important',3),
-('Marriage of Employees children', 'Important',2),
-('Demise of wife / husband / child / parents / parents in-law', 'Important',2),
-('Circumcision/Baptism of the Employees children', 'Important',2),
-('Maternity of Employees wife', 'Important',2),
-('Demise of Employees grandfather / grandmother', 'Important',1),
-('Demise of sibling and / or family member registered in the Family Card', 'Important',1),
-('Hajj (First time)', 'Free', 0),
-('Request from Government / Court / Police', 'Free', 0),
-('Medical Leave', 'Free', 0);
+    ('Annual Leave','Free',0),
+    ('Maternity Leave', 'Predictable',90),
+    ('Miscarriage Leave', 'Predictable',45),
+    ('Menstruation Leave', 'Predictable',2),
+    ('Employees marriage Leave', 'Predictable',3),
+    ('Marriage of Employees children', 'Predictable',2),
+    ('Demise of wife / husband / child / parents / parents in-law', 'Predictable',2),
+    ('Circumcision/Baptism of the Employees children', 'Predictable',2),
+    ('Maternity of Employees wife', 'Predictable',2),
+    ('Demise of Employees grandfather / grandmother', 'Predictable',1),
+    ('Demise of sibling and / or family member registered in the Family Card', 'Predictable',1),
+    ('Hajj (First time)', 'Predictable', 50),
+    ('Request from Government / Court / Police', 'Unpredictable', 0),
+    ('Medical Leave', 'Unpredictable', 0);
