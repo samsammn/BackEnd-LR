@@ -65,7 +65,7 @@ def supervisorApproval():
         
         cursorData = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cursorData.execute("rollback")
-        cursorData.execute("Select * from getDataEmployee(%s)", (int(staffID),))
+        cursorData.execute("Select * from get_data_employee(%s)", (int(staffID),))
 
         data = []
         for row in cursorData.fetchall():
@@ -177,7 +177,7 @@ def prosesApproval(comment, user_token, processID):
                     "form_data": {
                         "pvAction" : "Approved"
                     },
-                    "comment" : req_comment
+                    "comment" : comment
                 }
             }
 
@@ -185,7 +185,11 @@ def prosesApproval(comment, user_token, processID):
                 "Content-Type": "application/json",
                 "authorization":"Bearer %s" % user_token
                 }
-            r_post = requests.post(os.getenv("BASE_URL_TASK") + "/" + task_id +"/submit",data=json.dumps(submit_data), headers=header)
+            r_post = requests.post(
+                os.getenv("BASE_URL_TASK") + "/" + task_id +"/submit",
+                data=json.dumps(submit_data), 
+                headers=header
+                )
             result = json.loads(r_post.text)
 
             return result['data']
@@ -264,7 +268,7 @@ def getTasklistSupervisor():
             leaveType = viewData['leavename']
             sub_date = viewData['submissiondate']
 
-            tasklistSupervisor(user_token, process_id)
+            getTasklist(user_token, process_id, 'Supervisor')
 
             leave_detail_json = {
                 "id": idgettasklist,
