@@ -1,25 +1,28 @@
+from app import *
+from src.utils.DBConnection import *
+from src.utils.NextflowHeaderCreator import *
 from src.utils.JWTEncoderDecoder import *
 
 # fungsi untuk menggerakan/menjalankan form leave request dari requester ke supervisor
 @app.route('/nextflow/supervisor/submit', methods = ['POST'])
-def submitToSupervisor(TokenJwt):
+def submitToSupervisor():
     if request.method == 'POST':
 
-        req_sid = request.json['staff_id']
-        staffId = decodeStaffID(TokenJwt)
+        token = request.json['staff_id']
+        staffID = decodeStaffID(token)
         
-        req_comment = request.json['comment']
+        comment = request.json['comment']
         
-        curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curData.execute("rollback")
-        curData.execute("Select * from get_data_employee(%s)", (int(staffId),))
+        cursorData = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursorData.execute("rollback")
+        cursorData.execute("Select * from get_data_employee(%s)", (int(staffID),))
 
         data = []
-        for row in curData.fetchall():
+        for row in cursorData.fetchall():
             data.append(dict(row))
 
         connection.commit()
-        user_token = data[0]['tokenstaff']
+        user_token = data[0]['tokennextflow']
 
         record_instance = {
             "data": {
@@ -29,69 +32,59 @@ def submitToSupervisor(TokenJwt):
             }
         }
 
-        #submit ke nextflow unutk dapetin record_id tiap pesanan masuk/flow
-        header = {
-            "Content-Type": "application/json", 
-            "authorization":"Bearer %s" % user_token
-            }
-        r = requests.post((os.getenv("BASE_URL_RECORD")), data=json.dumps(record_instance), headers=header)
-
-        # result from create record
-        result = json.loads(r.text)
-        record_id = result['data']['id']
+        recordID = getRecordID(record_instance, user_token)
 
         # submit si flow pake record_id dan token dan process id
-        process_instance = submit_record(record_id, user_token)
-        process_id = process_instance['data']['process_id']
+        process_instance = submitRecord(recordID, user_token)
+        processID = process_instance['data']['process_id']
 
         # gerakin flow dari requester ke manager
-        submit_to_manager(req_comment, user_token, process_id)
+        submitToSupervisor(comment, user_token, processID)
 
         # masukin ke database bersama dengan record id dan process id nya
-        data_db = submit_to_database(record_id, process_id)
+        data_db = submitToDatabase(recordID, processID)
 
         # return berupa id dan statusnya
         return str(data_db), 200
 
-# funsgi untul meng submit to staff
-@app.route('nextflow/supervisor/approval', methods = ['POST'])
+# fungsi untuk memproses form leave request dari requester yang akan di aprroval oleh supervisor 
+@app.route('/nextflow/supervisor/approval', methods = ['POST'])
 def supervisorApproval():
     if request.method == 'POST':
 
-        token_jwt = request.json['staff_id']
-        decode = jwt.decode(token_jwt, secret_key, algorithms=['HS256'])
-        staff_id = decode['sid']
+        token = request.json['staff_id']
+        staffID = decodeStaffID(token)
 
-        req_record_id = request.json['rid']
-        req_process_id = request.json['pid']
-        req_comment = request.json['comment']
+        recordID = request.json['rid']
+        processID = request.json['pid']
+        comment = request.json['comment']
 
-        print("RID",req_record_id)
-        print("PID",req_process_id)
-        print("SID",req_sid)
+        print("RID",recordID)
+        print("PID",processID)
+        print("SID",staffID)
         
-        curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curData.execute("rollback")
-        curData.execute("Select * from getDataEmployee(%s)", (int(req_sid),))
+        cursorData = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursorData.execute("rollback")
+        cursorData.execute("Select * from getDataEmployee(%s)", (int(staffID),))
 
         data = []
-        for row in curData.fetchall():
+        for row in cursorData.fetchall():
             data.append(dict(row))
 
-        user_token = data[0]['tokenstaff']
+        user_token = data[0]['tokennextflow']
         print("Token",user_token)
 
         # gerakin flow dari requester ke staff
-        submit_to_staff(req_comment, user_token, req_process_id)
+        prosesApproval(comment, user_token, processID)
 
         # masukin ke database bersama dengan record id dan process id nya
-        data_db = edit_status_database(req_record_id, req_process_id)
+        data_db = editStatusDatabase(recordID, processID)
 
         # return berupa id dan statusnya
         return str(data_db), 200
 
-# fungsi untuk submit record dan gerakin flow ke requester
-def submit_record(record_id, user_token):
+# fungsi untuk menyerahkan record dan gerakin flow ke requester
+def submitRecord(recordID, user_token):
     #data template untuk ngesubmit record
         record_instance = {
             "data" : {
@@ -109,45 +102,43 @@ def submit_record(record_id, user_token):
             "Content-Type": "application/json",
             "authorization":"Bearer %s" % user_token
             }
-        r = requests.post((os.getenv("BASE_URL_RECORD")) + "/" + record_id +"/submit", data=request_data, headers=header)
+        r = requests.post(
+                (os.getenv("BASE_URL_RECORD")) + "/" + recordID +"/submit", 
+                data=request_data, 
+                headers=header
+            )
 
         result = json.loads(r.text)
         return result
 
 # fungsi untuk gerakin flow dari requester ke supervisor
-def submit_to_manager(req_comment, user_token, process_id):
+def submitToSupervisor(comment, user_token, processID):
 
     def recursive():
         # get task id and pVApprover name
-        query = "folder=app:task:all&filter[name]=Requester&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), process_id)
-        url = os.getenv("BASE_URL_TASK")+"?"+quote(query, safe="&=")
-        r = requests.get(url, headers={
-            "Content-Type": "application/json", 
-            "authorization":"Bearer %s" % user_token
-            })
-        result = json.loads(r.text)
+        result = getTasklist(user_token, processID, 'Requester')
 
         print("loading...")
 
         if result['data'] is None or len(result['data']) == 0:
             recursive()
         else:
-            manager_email = result['data'][0]['form_data']['pvSupervisor']
+            supervisor_email = result['data'][0]['form_data']['pvSupervisor']
             task_id = result['data'][0]['id']
 
-            #gerakin flow ke manager dari requester
+            #gerakin flow ke supervisor dari requester
             submit_data = {
                 "data" : {
                     "form_data": {
-                        "pvSupervisor" : manager_email
+                        "pvSupervisor" : supervisor_email
                     },
-                    "comment" : req_comment
+                    "comment" : comment
                 }
             }
 
             header = {
                 "Content-Type": "application/json",
-                "authorization":"Bearer %s" % user_token
+                "authorization": "Bearer %s" % user_token
                 }
             # r_post = requests.post(str(os.getenv("BASE_URL_TASK")) + "/" + task_id +"/submit", data=str(json.dumps(submit_data)), headers=str(header))
             r_post = requests.post(os.getenv("BASE_URL_TASK") + "/" + task_id +"/submit",data=json.dumps(submit_data), headers=header)
@@ -158,14 +149,18 @@ def submit_to_manager(req_comment, user_token, process_id):
     recursive()
     return "OK"
 
-# fungsi untuk gerakin flow dari supervisor ke staff
-def submit_to_staff(req_comment, user_token, process_id):
+# fungsi untuk gerakin flow dari supervisor ke decision approval
+# fungsi untuk memproses leave request (reject/approve)
+def prosesApproval(comment, user_token, processID):
 
     def recursive():
         # get task id and pVApprover name
-        query = "folder=app:task:all&filter[name]=Supervisor&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), process_id)
+        query = "folder=app:task:all&filter[name]=Supervisor&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), processID)
         url = os.getenv("BASE_URL_TASK")+"?"+quote(query, safe="&=")
-        r = requests.get(url, headers={"Content-Type": "application/json", "authorization":"Bearer %s" % user_token})
+        r = requests.get(url, headers={
+            "Content-Type": "application/json", 
+            "authorization":"Bearer %s" % user_token
+            })
         result = json.loads(r.text)
 
         print("loading...")
@@ -199,66 +194,65 @@ def submit_to_staff(req_comment, user_token, process_id):
     return "OK"
 
 # fungsi untuk memasukan data ke db
-def submit_to_database(record_id, process_id):
+def submitToDatabase(recordID, processID):
     
-    sid = request.json['sid']
-    decode = jwt.decode(sid, secret_key, algorithms=['HS256'])
-    req_sid = decode['sid']
+    token = request.json['staff_id']
+    staffID = decodeStaffID(token)
 
-    req_comment = request.json['comment']
-    req_start_date = request.json['sdate']
-    req_end_date = request.json['edate']
-    req_leave_type = request.json['leave_type']
-    req_submission_date = request.json['submission_date']
+    comment = request.json['comment']
+    startDate = request.json['start_date']
+    endDate = request.json['end_date']
+    leaveType = request.json['leave_type']
+    submissionDate = request.json['submission_date']
 
-    curSubmit = con.cursor()
-    curSubmit.execute("rollback")
-    curSubmit.execute("select * from setLeaveStaff(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",(req_start_date, req_end_date, req_leave_type, req_comment, req_submission_date, 'Pending','true','false',record_id,process_id,req_sid))
-    con.commit()
-    print("Process ID: ",process_id)
+    cursorSubmit = connection.cursor()
+    cursorSubmit.execute("rollback")
+    cursorSubmit.execute("select * from set_leave_staff(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",(startDate, endDate, leaveType, comment, submissionDate, 'Pending','true','false',recordID,processID,staffID))
+    connection.commit()
+    print("Process ID: ",processID)
 
     return "Submited", 200
 
 # fungsi untuk mengedit status di db
-def edit_status_database(record_id, process_id):
+def editStatusDatabase(recordID, processID):
     
-    req_lid = request.json['lid']
-    req_comment = request.json['comment']
-    req_leave_action = request.json['leaveAction']
-    req_approval_date = request.json['approval_date']
+    leaveID = request.json['lid']
+    comment = request.json['comment']
+    leaveAction = request.json['leaveAction']
+    approvalDate = request.json['approval_date']
 
-    curEdit = con.cursor()
-    curEdit.execute("rollback")
-    curEdit.execute("update leave_detail set status=%s, read_staff=%s where id=%s",(req_leave_action, 'false', req_lid))
-    con.commit()
-    print("Process ID Edit: ",process_id)
+    cursorEdit = connection.cursor()
+    cursorEdit.execute("rollback")
+    cursorEdit.execute("update leave_detail set status=%s, read_staff=%s where id=%s",(leaveAction, 'false', leaveID))
+    connection.commit()
+    print("Process ID Edit: ",processID)
 
     return "Editted", 200
 
 # fungsi mendapatkan task list di supervisor/ 
-@app.route('/nextflow/tasklist/supervisor', methods=['POST'])
+@app.route('/nextflow/supervisor/tasklist', methods=['POST'])
 def getTasklistSupervisor():
     if request.method == 'POST':
-        sid = request.json['sid']
-        decode = jwt.decode(sid, secret_key, algorithms=['HS256'])
-        req_sid = decode['sid']
 
-        curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curData.execute("Select * from get_data_employee(%s)", (int(req_sid),))
+        token = request.json['staff_id']
+        staffID = decodeStaffID(token)
+
+        cursorData = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursorData.execute("Select * from get_data_employee(%s)", (int(staffID),))
 
         data = []
-        for row in curData.fetchall():
+        for row in cursorData.fetchall():
             data.append(dict(row))
 
-        user_token = data[0]['tokenstaff']
+        user_token = data[0]['tokennextflow']
         # staff_name = data[0]['staff_name']
 
-        curDataLR = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curDataLR.execute("rollback")
-        curDataLR.execute("select * from getTasklistSupervisor()")
+        cursorDataLR = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursorDataLR.execute("rollback")
+        cursorDataLR.execute("select * from get_tasklist_supervisor()")
 
         dataLeaveDetail = []
-        for rows in curDataLR.fetchall():
+        for rows in cursorDataLR.fetchall():
             viewData = dict(rows)
             idgettasklist = viewData['id_gettasklist']
             staff_id = viewData['staffid']
@@ -270,14 +264,7 @@ def getTasklistSupervisor():
             leaveType = viewData['leavename']
             sub_date = viewData['submissiondate']
 
-            query = "folder=app:task:all&filter[name]=Supervisor&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), process_id)
-            url = os.getenv("BASE_URL_TASK")+"?"+quote(query, safe="&=")
-
-            r = requests.get(url, headers={
-                "Content-Type": "application/json", 
-                "authorization":"Bearer %s" % user_token
-                })
-            result = json.loads(r.text)
+            tasklistSupervisor(user_token, process_id)
 
             leave_detail_json = {
                 "id": idgettasklist,
@@ -296,30 +283,30 @@ def getTasklistSupervisor():
         return jsonify(dataLeaveDetail), 200
         # return "Oke"
 
-@app.route('/get-tasklist-staff', methods=['POST'])
+#fungsi 
+@app.route('/nextflow/staff/tasklist', methods=['POST'])
 def getTasklistStaff():
-
     if request.method == 'POST':
-        sid = request.json['sid']
-        decode = jwt.decode(sid, secret_key, algorithms=['HS256'])
-        req_sid = decode['sid']
 
-        curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curData.execute("Select * from get_data_employee(%s)", (int(req_sid),))
+        token = request.json['staff_id']
+        staffID = decodeStaffID(token)
+
+        cursorData = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursorData.execute("Select * from get_data_employee(%s)", (int(staffID),))
 
         data = []
-        for row in curData.fetchall():
+        for row in cursorData.fetchall():
             data.append(dict(row))
 
-        user_token = data[0]['tokenstaff']
+        user_token = data[0]['tokennextflow']
         # staff_name = data[0]['staff_name']
 
-        curDataLR = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curDataLR.execute("rollback")
-        curDataLR.execute("select * from get_tasklist_staff()")
+        cursorDataLR = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursorDataLR.execute("rollback")
+        cursorDataLR.execute("select * from get_tasklist_staff()")
 
         dataLeaveDetail = []
-        for rows in curDataLR.fetchall():
+        for rows in cursorDataLR.fetchall():
             viewData = dict(rows)
             idgettasklist = viewData['id_gettasklist']
             staff_id = viewData['staffid']
@@ -331,7 +318,7 @@ def getTasklistStaff():
             leaveType = viewData['leavename']
             sub_date = viewData['submissiondate']
 
-            query = "folder=app:task:all&filter[name]=Requester&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), process_id)
+            query = "folder=app:task:all&filter[name]=Requester&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), processID)
             url = os.getenv("BASE_URL_TASK")+"?"+quote(query, safe="&=")
 
             r = requests.get(url, headers={
