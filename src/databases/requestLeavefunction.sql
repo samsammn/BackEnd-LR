@@ -1,30 +1,5 @@
-
-CREATE OR REPLACE FUNCTION getTweetUser(idUsers int)
-RETURNS TABLE(
-		iduser int,
-        username text,
-        fullname text,
-        email text,
-        photoprofile text,
-        idtweet int,
-		tweet text,
-        media_image text,
-        media_video text,
-        tgl text
-)
-AS $$
-BEGIN 
-	RETURN QUERY select users.id as idUser, users.username as username, users.fullname as fullname, users.email as email, users.photoprofile as photoprofile, 
-    	tweet.id as idTweet, tweet.tweet as tweet, tweet.media_image as media_image, 
-        tweet.media_video as media_video, 
-        tweet.tgl as tgl from users inner join tweet on users.id=tweet.id_user where users.id=idUsers;
-END; $$
-
-LANGUAGE 'plpgsql';
-
-
---- create function SignIn / Login
-CREATE OR REPLACE FUNCTION signIn(sid int, pwd text)
+--- 1. create function SignIn / Login
+CREATE OR REPLACE FUNCTION sign_in(sid int, pwd text)
 RETURNS TABLE(
     staffId int,
     staffName text,
@@ -36,19 +11,19 @@ RETURNS TABLE(
     locationUser text,
     staffLevel text,
     joinedDate text,
-    tokenStaff text
+    tokenNextflow text
 )
 AS $$
 BEGIN
     RETURN QUERY SELECT staff_id as staffId, staff_name as staffName , email as emailStaff, password as passwordStaff, supervisor_id as supervisorId, sex as gender,
-    division_id as divisionId, location_user as locationUser, staff_level as staffLevel, joined_date as joinedDate, token as tokenStaff from employee where staff_id = sid and password = pwd;
+    division_id as divisionId, location_user as locationUser, staff_level as staffLevel, joined_date as joinedDate, token_nextflow as tokenNextflow from employee where staff_id = sid and password = pwd;
 END; $$
 
 LANGUAGE 'plpgsql';
 
 
---- Function get leave type
-CREATE OR REPLACE FUNCTION getLeaveType()
+--- 2. Function get leave type
+CREATE OR REPLACE FUNCTION get_leave_type()
 RETURNS TABLE(
     id_leave int,
     leaveName text,
@@ -61,8 +36,8 @@ END; $$
 
 LANGUAGE 'plpgsql'
 
---- Function get leave type by id leave type
-CREATE OR REPLACE FUNCTION getLeaveTypeBy(idlt int)
+--- 3. Function get leave type by id leave type
+CREATE OR REPLACE FUNCTION get_leave_type_by(idlt int)
 RETURNS TABLE(
     id_leave int,
     leaveName text,
@@ -76,8 +51,8 @@ END; $$
 
 LANGUAGE 'plpgsql'
 
---- function get data Employee
-CREATE or REPLACE FUNCTION getDataEmployee(sid int)
+--- 4. function get data Employee
+CREATE or REPLACE FUNCTION get_data_employee(sid int)
 RETURNS TABLE(
     staffId int,
     staffName text,
@@ -89,18 +64,18 @@ RETURNS TABLE(
     locationUser text,
     staffLevel text,
     joinedDate text,
-    tokenStaff text
+    tokenNextflow text
 )
 AS $$
 BEGIN
     RETURN QUERY SELECT staff_id as staffId, staff_name as staffName , email as emailStaff, password as passwordStaff, supervisor_id as supervisorId, sex as gender,
-    division_id as divisionId, location_user as locationUser, staff_level as staffLevel, joined_date as joinedDate, token as tokenStaff from employee where staff_id = sid;
+    division_id as divisionId, location_user as locationUser, staff_level as staffLevel, joined_date as joinedDate, token_nextflow as tokenNextflow from employee where staff_id = sid;
 END; $$
 
 LANGUAGE 'plpgsql';
 
---- funstion submit To Supervisor
-CREATE or REPLACE FUNCTION submitToSupervisor(sid int)
+---5. function submit To Supervisor
+CREATE or REPLACE FUNCTION submit_to_supervisor(sid int)
 RETURNS TABLE(
     staffId int,
     staffName text,
@@ -112,21 +87,21 @@ RETURNS TABLE(
     locationUser text,
     staffLevel text,
     joinedDate text,
-    tokenStaff text
+    tokenNextflow text
 )
 AS $$
 BEGIN
     RETURN QUERY SELECT staff_id as staffId, staff_name as staffName , email as emailStaff, password as passwordStaff, supervisor_id as supervisorId, sex as gender,
-    division_id as divisionId, location_user as locationUser, staff_level as staffLevel, joined_date as joinedDate, token as tokenStaff from employee where staff_id = sid;
+    division_id as divisionId, location_user as locationUser, staff_level as staffLevel, joined_date as joinedDate, token_nextflow as tokenNextflow from employee where staff_id = sid;
 END; $$
 
 LANGUAGE 'plpgsql';
 
 
---- function insert Leave staff
-select * from setLeaveStaff('20-05-2018','25-05-2018',0,'kagok hayang libur','25-05-2018','Approve', 'true', 'false','record:12345','bpmn:12345',2018112001)
+---6. function insert Leave staff
+select * from set_leave_staff('20-05-2018','25-05-2018',0,'kagok hayang libur','25-05-2018','Approve', 'true', 'false','record:12345','bpmn:12345',2018112001)
 
-CREATE OR REPLACE FUNCTION setLeaveStaff(start_dates text, end_dates text, leave_ids int, remarkss text, submission_dates text, statuss text, read_staffs text, read_supervisors text, record_ids text, process_ids text, staff_ids int)
+CREATE OR REPLACE FUNCTION set_leave_staff(start_dates text, end_dates text, leave_ids int, remarkss text, submission_dates text, statuss text, read_staffs text, read_supervisors text, record_ids text, process_ids text, staff_ids int)
 RETURNS TABLE (
     startDate text,
     endDate text,
@@ -148,8 +123,8 @@ END; $$
 
 LANGUAGE 'plpgsql';
 
----get Task list Supervisor
-CREATE or REPLACE FUNCTION getTasklistSupervisor()
+---7. get Task list Supervisor
+CREATE or REPLACE FUNCTION get_tasklist_Supervisor()
 RETURNS TABLE(
     id_gettasklist int,
     startDate text,
@@ -172,7 +147,7 @@ RETURNS TABLE(
     locationUser text,
     staffLevel text,
     joinedDate text,
-    tokenStaff text,
+    tokenNextflow text,
     leaveName text, 
     entitlementLeave int 
 )
@@ -200,7 +175,7 @@ RETURN QUERY select
     employee.location_user as locatioUser,
     employee.staff_level as staffLevel,
     employee.joined_date as joinedDate, 
-    employee.token as tokenStaff, 
+    employee.token_nextflow as tokenNextflow, 
     leave.leave_name as leaveName, 
     leave.entitlement as entitlementLeave 
     from leave_detail inner join employee on leave_detail.staff_id=employee.staff_id inner join leave on leave_detail.leave_id=leave.id;
@@ -208,7 +183,7 @@ END; $$
 
 LANGUAGE 'plpgsql';
 
----get Task list Staff
+---8. get Task list Staff
 CREATE or REPLACE FUNCTION getTasklistSupervisor()
 RETURNS TABLE(
     id_gettasklist int,
@@ -232,7 +207,7 @@ RETURNS TABLE(
     locationUser text,
     staffLevel text,
     joinedDate text,
-    tokenStaff text,
+    tokenNextflow text,
     leaveName text, 
     entitlementLeave int 
 )
@@ -260,7 +235,7 @@ RETURN QUERY select
     employee.location_user as locatioUser,
     employee.staff_level as staffLevel,
     employee.joined_date as joinedDate, 
-    employee.token as tokenStaff, 
+    employee.token_nextflow as tokenNextflow, 
     leave.leave_name as leaveName, 
     leave.entitlement as entitlementLeave 
     from leave_detail inner join employee on leave_detail.staff_id=employee.staff_id inner join leave on leave_detail.leave_id=leave.id;
@@ -268,8 +243,8 @@ END; $$
 
 LANGUAGE 'plpgsql';
 
----get Leave Detail
-CREATE or REPLACE FUNCTION getLeaveDetail(lid int)
+---9. get Leave Detail
+CREATE or REPLACE FUNCTION get_leave_detail(lid int)
 RETURNS TABLE(
     leaveId int,
     startDate text,
@@ -291,7 +266,7 @@ RETURNS TABLE(
     locationUser text,
     staffLevel text,
     joinedDate text,
-    tokenStaff text,
+    tokenNextflow text,
     leaveName text, 
     entitlementLeave int 
 )
@@ -318,7 +293,7 @@ RETURN QUERY select
     employee.location_user as locatioUser,
     employee.staff_level as staffLevel,
     employee.joined_date as joinedDate, 
-    employee.token as tokenStaff, 
+    employee.token_nextflow as tokenNextflow, 
     leave.leave_name as leaveName, 
     leave.entitlement as entitlementLeave 
     from leave_detail inner join employee on leave_detail.staff_id=employee.staff_id inner join leave on leave_detail.leave_id=leave.id where leave_detail.id=lid;

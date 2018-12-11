@@ -14,7 +14,7 @@
      created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
      updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
      deleted_at timestamp with time zone,
-	token text
+	 token_nexflow text
  );
 
  ALTER TABLE ONLY public.employee ADD CONSTRAINT employee_pkey PRIMARY KEY (id);

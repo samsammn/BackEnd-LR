@@ -3,7 +3,6 @@ from flask_cors import CORS
 from requests.utils import quote
 
 import os, json, requests, psycopg2, psycopg2.extras
-import jwt
 
 app = Flask(__name__)
 cors = CORS(app)

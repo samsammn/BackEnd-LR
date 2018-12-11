@@ -1,24 +1,24 @@
 
-# funsgi untul meng submit to supervisor
-@app.route('/submitToSupervisor', methods = ['POST'])
+# fungsi untuk menggerakan/menjalankan form leave request dari requester ke supervisor
+@app.route('/nextflow/supervisor/submit', methods = ['POST'])
 def submitToSupervisor():
     if request.method == 'POST':
 
-        req_sid = request.json['sid']
+        req_sid = request.json['staff_id']
         decode = jwt.decode(req_sid, secret_key, algorithm=['HS256'])
-        sid = decode['sid']
+        staff_id = decode['staff_id']
         
         req_comment = request.json['comment']
         
         curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
         curData.execute("rollback")
-        curData.execute("Select * from getDataEmployee(%s)", (int(sid),))
+        curData.execute("Select * from get_data_employee(%s)", (int(staff_id),))
 
         data = []
         for row in curData.fetchall():
             data.append(dict(row))
 
-        con.commit()
+        connection.commit()
         user_token = data[0]['tokenstaff']
 
         record_instance = {
@@ -30,7 +30,10 @@ def submitToSupervisor():
         }
 
         #submit ke nextflow unutk dapetin record_id tiap pesanan masuk/flow
-        header = {"Content-Type": "application/json", "authorization":"Bearer %s" % user_token}
+        header = {
+            "Content-Type": "application/json", 
+            "authorization":"Bearer %s" % user_token
+            }
         r = requests.post((os.getenv("BASE_URL_RECORD")), data=json.dumps(record_instance), headers=header)
 
         # result from create record
@@ -51,13 +54,13 @@ def submitToSupervisor():
         return str(data_db), 200
 
 # funsgi untul meng submit to staff
-@app.route('/submitToStaff', methods = ['POST'])
-def submitToStaff():
+@app.route('nextflow/supervisor/approval', methods = ['POST'])
+def supervisorApproval():
     if request.method == 'POST':
 
-        sid = request.json['sid']
-        decode = jwt.decode(sid, secret_key, algorithms=['HS256'])
-        req_sid = decode['sid']
+        token_jwt = request.json['staff_id']
+        decode = jwt.decode(token_jwt, secret_key, algorithms=['HS256'])
+        staff_id = decode['sid']
 
         req_record_id = request.json['rid']
         req_process_id = request.json['pid']
@@ -102,7 +105,10 @@ def submit_record(record_id, user_token):
         request_data = json.dumps(record_instance)
 
         #submit ke nextflow untuk dapetin process_id tiap pesanan masuk/flow
-        header = {"Content-Type": "application/json", "authorization":"Bearer %s" % user_token}
+        header = {
+            "Content-Type": "application/json",
+            "authorization":"Bearer %s" % user_token
+            }
         r = requests.post((os.getenv("BASE_URL_RECORD")) + "/" + record_id +"/submit", data=request_data, headers=header)
 
         result = json.loads(r.text)
@@ -115,7 +121,10 @@ def submit_to_manager(req_comment, user_token, process_id):
         # get task id and pVApprover name
         query = "folder=app:task:all&filter[name]=Requester&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), process_id)
         url = os.getenv("BASE_URL_TASK")+"?"+quote(query, safe="&=")
-        r = requests.get(url, headers={"Content-Type": "application/json", "authorization":"Bearer %s" % user_token})
+        r = requests.get(url, headers={
+            "Content-Type": "application/json", 
+            "authorization":"Bearer %s" % user_token
+            })
         result = json.loads(r.text)
 
         print("loading...")
@@ -136,7 +145,10 @@ def submit_to_manager(req_comment, user_token, process_id):
                 }
             }
 
-            header = {"Content-Type": "application/json", "authorization":"Bearer %s" % user_token}
+            header = {
+                "Content-Type": "application/json",
+                "authorization":"Bearer %s" % user_token
+                }
             # r_post = requests.post(str(os.getenv("BASE_URL_TASK")) + "/" + task_id +"/submit", data=str(json.dumps(submit_data)), headers=str(header))
             r_post = requests.post(os.getenv("BASE_URL_TASK") + "/" + task_id +"/submit",data=json.dumps(submit_data), headers=header)
             result = json.loads(r_post.text)
@@ -174,7 +186,10 @@ def submit_to_staff(req_comment, user_token, process_id):
                 }
             }
 
-            header = {"Content-Type": "application/json", "authorization":"Bearer %s" % user_token}
+            header = {
+                "Content-Type": "application/json",
+                "authorization":"Bearer %s" % user_token
+                }
             r_post = requests.post(os.getenv("BASE_URL_TASK") + "/" + task_id +"/submit",data=json.dumps(submit_data), headers=header)
             result = json.loads(r_post.text)
 
@@ -220,8 +235,8 @@ def edit_status_database(record_id, process_id):
 
     return "Editted", 200
 
-# fungsi mendapatkan task list di supervisor
-@app.route('/getTasklistSupervisor', methods=['POST'])
+# fungsi mendapatkan task list di supervisor/ 
+@app.route('/nextflow/tasklist/supervisor', methods=['POST'])
 def getTasklistSupervisor():
     if request.method == 'POST':
         sid = request.json['sid']
@@ -229,7 +244,7 @@ def getTasklistSupervisor():
         req_sid = decode['sid']
 
         curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curData.execute("Select * from getDataEmployee(%s)", (int(req_sid),))
+        curData.execute("Select * from get_data_employee(%s)", (int(req_sid),))
 
         data = []
         for row in curData.fetchall():
@@ -258,7 +273,10 @@ def getTasklistSupervisor():
             query = "folder=app:task:all&filter[name]=Supervisor&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), process_id)
             url = os.getenv("BASE_URL_TASK")+"?"+quote(query, safe="&=")
 
-            r = requests.get(url, headers={"Content-Type": "application/json", "authorization":"Bearer %s" % user_token})
+            r = requests.get(url, headers={
+                "Content-Type": "application/json", 
+                "authorization":"Bearer %s" % user_token
+                })
             result = json.loads(r.text)
 
             leave_detail_json = {
@@ -278,7 +296,7 @@ def getTasklistSupervisor():
         return jsonify(dataLeaveDetail), 200
         # return "Oke"
 
-@app.route('/getTasklistStaff', methods=['POST'])
+@app.route('/get-tasklist-staff', methods=['POST'])
 def getTasklistStaff():
 
     if request.method == 'POST':
@@ -287,7 +305,7 @@ def getTasklistStaff():
         req_sid = decode['sid']
 
         curData = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        curData.execute("Select * from getDataEmployee(%s)", (int(req_sid),))
+        curData.execute("Select * from get_data_employee(%s)", (int(req_sid),))
 
         data = []
         for row in curData.fetchall():
@@ -298,7 +316,7 @@ def getTasklistStaff():
 
         curDataLR = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
         curDataLR.execute("rollback")
-        curDataLR.execute("select * from getT asklistStaff()")
+        curDataLR.execute("select * from get_tasklist_staff()")
 
         dataLeaveDetail = []
         for rows in curDataLR.fetchall():
@@ -316,7 +334,10 @@ def getTasklistStaff():
             query = "folder=app:task:all&filter[name]=Requester&filter[state]=active&filter[definition_id]=%s&filter[process_id]=%s" % (os.getenv("DEFINITION_ID"), process_id)
             url = os.getenv("BASE_URL_TASK")+"?"+quote(query, safe="&=")
 
-            r = requests.get(url, headers={"Content-Type": "application/json", "authorization":"Bearer %s" % user_token})
+            r = requests.get(url, headers={
+                "Content-Type": "application/json", 
+                "authorization":"Bearer %s" % user_token
+                })
             result = json.loads(r.text)
 
             leave_detail_json = {

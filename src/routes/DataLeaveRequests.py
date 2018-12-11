@@ -1,82 +1,82 @@
 from app import *
 from src.utils.DBConnection import *
+from src.utils.JWTEncoderDecoder import *
 
-# fungsi untuk signIn
-@app.route('/signIn', methods=['POST'])
+#1. fungsi untuk signin 
+@app.route('/sign-in', methods=['POST'])
 def signIn():
 
-    sid = request.json['sid']
-    pwd = request.json['pwd']
+    sid = request.json['staff_id']
+    pwd = request.json['password']
 
-    curSignIn = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    curSignIn.execute("rollback")
-    curSignIn.execute("Select * from signin(%s,%s)",(int(sid),pwd))
-    jml = curSignIn.rowcount
+    cursorSignIn = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursorSignIn.execute("rollback")
+    cursorSignIn.execute("Select * from sign_in(%s,%s)",(int(sid),pwd))
+    rowCount = cursorSignIn.rowcount
 
     data = []
-    for row in curSignIn.fetchall():
-        encode = jwt.encode({'sid':row[0]}, secret_key, algorithm='HS256').decode('utf-8')
+    for row in cursorSignIn.fetchall():
+        token = encodeStaffID(row[0])
         data.append(dict(row))
 
     connection.commit()
-    data[0].update({'token':str(encode)})
+    data[0].update({'token_jwt':str(token)})
 
-    if jml > 0:
+    if rowCount > 0:
         return jsonify(data), 200
     else:
         return "Failed", 400
 
-# fungsi membuat leave type
-@app.route('/getLeaveType')
+#2. fungsi membuat leave type
+@app.route('/leave-type', methods=['GET'])
 def getLeaveType():
-    curLeaveType = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    curLeaveType.execute("Select * from getLeaveType()")
+    cursorLeaveType = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursorLeaveType.execute("Select * from get_leave_type()")
 
     data = []
-    for row in curLeaveType.fetchall():
+    for row in cursorLeaveType.fetchall():
         data.append(dict(row))
 
     return jsonify(data), 200
 
-# fungsi membuat leave type berdasarkan id leave type
-@app.route('/getLeaveTypeBy/<id_leave_type>')
+#3. fungsi membuat leave type berdasarkan id leave type
+@app.route('/leave-type-by/<id_leave_type>', methods=['GET'])
 def getLeaveTypeBy(id_leave_type):
 
-    curLeaveType = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    curLeaveType.execute("Select * from getLeaveTypeBy(%s)",(id_leave_type,))
+    cursorLeaveType = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursorLeaveType.execute("Select * from get_leave_type_by(%s)",(id_leave_type,))
 
     data = []
-    for row in curLeaveType.fetchall():
+    for row in cursorLeaveType.fetchall():
         data.append(dict(row))
 
     return jsonify(data), 200
 
-# fungsi untuk get data employee
-@app.route('/getDataEmployee/<sidToken>')
-def getDataEmployee(sidToken):
+#4. fungsi untuk get data employee
+@app.route('/data-employee/<TokenJwt>', methods=['GET'])
+def getDataEmployee(TokenJwt):
 
-    decode = jwt.decode(sidToken, secret_key, algorithms=['HS256'])
-    sid = decode['sid']
+    staffId = decodeStaffID(TokenJwt)
 
-    curGetEmployee = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    curGetEmployee.execute("Select * from getDataEmployee(%s)", (sid,))
+    cursorGetEmployee = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursorGetEmployee.execute("Select * from get_data_employee(%s)", (staffId,))
 
     data = []
-    for row in curGetEmployee.fetchall():
+    for row in cursorGetEmployee.fetchall():
         data.append(dict(row))
 
-    con.commit()
+    connection.commit()
     return jsonify(data), 200
 
-# fungsi membuat get leave detail
-@app.route('/getLeaveDetail/<leave_id>')
+#5. fungsi membuat get leave detail = berfungsi menampilkan transaksi detail request cuti 
+@app.route('/leave-detail/<leave_id>', methods=['GET'])
 def getLeaveDetails(leave_id):
-    curLeaveDetails = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    curLeaveDetails.execute('rollback')
-    curLeaveDetails.execute("Select * from getleavedetail(%s)",(leave_id,))
+    cursorLeaveDetails = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursorLeaveDetails.execute('rollback') #rollback untuk meng-eksekusi perintah hingga berhasil
+    cursorLeaveDetails.execute("Select * from get_leave_detail(%s)",(leave_id,))
 
     data = []
-    for row in curLeaveDetails.fetchall():
+    for row in cursorLeaveDetails.fetchall():
         data.append(dict(row))
 
     return jsonify(data), 200

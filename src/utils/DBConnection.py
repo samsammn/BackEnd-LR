@@ -2,7 +2,7 @@ import psycopg2
 
 dbName     = "LeaveRequest"
 dbUser     = "postgres"
-dbPassword = "password"
+dbPassword = "fahmi12345"
 dbHost     = "localhost"
 dbPort     = "5432"
 
